@@ -10,7 +10,7 @@
 module Paperclip
   class Watermark < Processor
     # Handles watermarking of images that are uploaded.
-    attr_accessor :current_geometry, :target_geometry, :format, :whiny, :convert_options, :watermark_path, :overlay, :position
+    attr_accessor :current_geometry, :target_geometry, :format, :whiny, :convert_options, :watermark_path, :overlay, :position, :composite_geometry
 
     def initialize file, options = {}, attachment = nil
       super
@@ -25,7 +25,13 @@ module Paperclip
       @whiny            = options[:whiny].nil? ? true : options[:whiny]
       @format           = options[:format]
       @watermark_path   = options[:watermark_path]
-      @position         = options[:position].nil? ? "SouthEast" : options[:position]
+      
+      if options[:composite_geometry]
+        @composite_geometry           = options[:composite_geometry]
+      else
+        @position         = options[:position].nil? ? "SouthEast" : options[:position]
+      end
+
       @overlay          = options[:overlay].nil? ? true : false
       @current_format   = File.extname(@file.path)
       @basename         = File.basename(@file.path, @current_format)
@@ -61,7 +67,13 @@ module Paperclip
 
       if watermark_path
         command = "composite"
-        params = %W[-gravity #{@position} #{watermark_path} #{tofile(dst)}]
+        
+        params = if @composite_geometry
+          %W[-geometry #{@composite_geometry} #{watermark_path} #{tofile(dst)}]
+        else
+          %W[-gravity #{@position} #{watermark_path} #{tofile(dst)}]
+        end
+
         params << tofile(dst)
         begin
           success = Paperclip.run(command, params.flatten.compact.collect{|e| "'#{e}'"}.join(" "))
